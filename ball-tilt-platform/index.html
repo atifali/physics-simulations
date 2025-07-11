@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Ball on Tiltable Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        let engine, world, ball, platform;
+        let angle = 0;
+        let angleSpeed = 0.02; // Rotation speed for platform tilt
+        let canvas;
+
+        function setup() {
+            canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('sketch-holder');
+
+            // Create Matter.js engine
+            engine = Matter.Engine.create();
+            world = engine.world;
+            world.gravity.y = 1; // Set gravity direction
+
+            // Create platform (static rectangle) at bottom center, longer
+            platform = Matter.Bodies.rectangle(windowWidth / 2, windowHeight - 100, 400, 20, {
+                isStatic: true,
+                friction: 0.05, // Reduced friction for less stickiness
+                restitution: 0.7 // Increased restitution for bouncier interaction
+            });
+
+            // Create ball (dynamic circle) above platform
+            ball = Matter.Bodies.circle(windowWidth / 2, windowHeight - 200, 20, {
+                friction: 0.05, // Reduced friction for less stickiness
+                restitution: 0.7 // Increased restitution for bouncier behavior
+            });
+
+            // Add bodies to world
+            Matter.World.add(world, [platform, ball]);
+
+            // Set initial platform angle
+            Matter.Body.setAngle(platform, angle);
+        }
+
+        function draw() {
+            background(220);
+
+            // Handle keyboard input for tilting
+            if (keyIsDown(LEFT_ARROW)) {
+                angle -= angleSpeed;
+            }
+            if (keyIsDown(RIGHT_ARROW)) {
+                angle += angleSpeed;
+            }
+
+            // Limit angle to prevent extreme tilting
+            angle = constrain(angle, -PI / 4, PI / 4);
+
+            // Update platform angle
+            Matter.Body.setAngle(platform, angle);
+
+            // Run physics engine
+            Matter.Engine.update(engine);
+
+            // Draw platform
+            push();
+            translate(platform.position.x, platform.position.y);
+            rotate(angle);
+            fill(100);
+            rectMode(CENTER);
+            rect(0, 0, 400, 20);
+            pop();
+
+            // Draw fixed fulcrum triangle (not rotated)
+            fill(0, 0, 255);
+            triangle(
+                platform.position.x, platform.position.y + 10,
+                platform.position.x - 10, platform.position.y + 30,
+                platform.position.x + 10, platform.position.y + 30
+            );
+
+            // Draw ball
+            fill(255, 0, 0);
+            ellipse(ball.position.x, ball.position.y, 40, 40);
+
+            // Display instructions
+            fill(0);
+            textSize(16);
+            text("Use LEFT and RIGHT arrow keys to tilt the platform", 10, 30);
+        }
+
+        // Reset ball position when clicking
+        function mousePressed() {
+            if (dist(mouseX, mouseY, ball.position.x, ball.position.y) < 20) {
+                Matter.Body.setPosition(ball, { x: windowWidth / 2, y: windowHeight - 200 });
+                Matter.Body.setVelocity(ball, { x: 0, y: 0 });
+            }
+        }
+
+        // Handle window resizing
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            // Reposition platform and ball to stay centered
+            Matter.Body.setPosition(platform, { x: windowWidth / 2, y: windowHeight - 100 });
+            Matter.Body.setPosition(ball, { x: windowWidth / 2, y: windowHeight - 200 });
+        }
+    </script>
+    <div id="sketch-holder"></div>
+</body>
+
+</html>
