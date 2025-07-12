@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Bouncing Ball Simulation</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        // Physics world setup
+        const world = new CANNON.World();
+        world.gravity.set(0, -9.81, 0); // Gravity in y direction
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.solver.iterations = 10;
+
+        // Ground
+        const groundMaterial = new CANNON.Material('ground');
+        groundMaterial.restitution = 0.8; // Bounciness
+        const groundBody = new CANNON.Body({
+            mass: 0, // Static body
+            shape: new CANNON.Plane(),
+            material: groundMaterial
+        });
+        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+        world.addBody(groundBody);
+
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMesh = new THREE.Mesh(
+            groundGeometry,
+            new THREE.MeshLambertMaterial({ color: 0x888888 })
+        );
+        groundMesh.rotation.x = -Math.PI / 2;
+        scene.add(groundMesh);
+
+        // Ball
+        const ballMaterial = new CANNON.Material('ball');
+        ballMaterial.restitution = 0.8;
+        const ballBody = new CANNON.Body({
+            mass: 1,
+            shape: new CANNON.Sphere(0.5),
+            material: ballMaterial
+        });
+        ballBody.position.set(0, 5, 0); // Start 5 units above ground
+        world.addBody(ballBody);
+
+        const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        const ballMesh = new THREE.Mesh(
+            ballGeometry,
+            new THREE.MeshLambertMaterial({ color: 0xff0000 })
+        );
+        scene.add(ballMesh);
+
+        // Camera position
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Animation loop
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Step physics
+            world.step(1 / 60, clock.getDelta(), 3);
+
+            // Update ball position
+            ballMesh.position.copy(ballBody.position);
+            ballMesh.quaternion.copy(ballBody.quaternion);
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+
+</html>
