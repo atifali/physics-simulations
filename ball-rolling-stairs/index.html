@@ -24,7 +24,20 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb); // Sky blue background
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 5, 10);
+
+        // Camera orbit variables
+        let radius = 10; // Distance from origin
+        let theta = Math.PI / 4; // Horizontal angle
+        let phi = Math.PI / 4; // Vertical angle
+        const minPhi = 0.1; // Prevent camera from going too high/low
+        const maxPhi = Math.PI / 2 - 0.1;
+
+        // Initial camera position
+        camera.position.set(
+            radius * Math.sin(phi) * Math.cos(theta),
+            radius * Math.cos(phi),
+            radius * Math.sin(phi) * Math.sin(theta)
+        );
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -88,9 +101,39 @@
         floor.receiveShadow = true;
         scene.add(floor);
 
+        // Keyboard controls
+        const rotationSpeed = 0.02;
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = true;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key in keys) {
+                keys[event.key] = false;
+            }
+        });
+
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
+
+            // Update camera rotation
+            if (keys.ArrowLeft) theta += rotationSpeed;
+            if (keys.ArrowRight) theta -= rotationSpeed;
+            if (keys.ArrowUp) phi = Math.max(minPhi, phi - rotationSpeed);
+            if (keys.ArrowDown) phi = Math.min(maxPhi, phi + rotationSpeed);
+
+            // Update camera position
+            camera.position.set(
+                radius * Math.sin(phi) * Math.cos(theta),
+                radius * Math.cos(phi),
+                radius * Math.sin(phi) * Math.sin(theta)
+            );
+            camera.lookAt(0, 0, 0);
 
             // Apply gravity
             velocity.add(gravity);
