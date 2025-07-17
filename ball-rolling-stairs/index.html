@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ball Rolling Down Stairs</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Soft ambient light
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        scene.add(directionalLight);
+
+        // Stairs
+        const stairMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.7, metalness: 0.1 });
+        const stairs = [];
+        const stairCount = 10;
+        const stairWidth = 4;
+        const stairHeight = 0.3;
+        const stairDepth = 0.5;
+
+        for (let i = 0; i < stairCount; i++) {
+            const geometry = new THREE.BoxGeometry(stairWidth, stairHeight, stairDepth);
+            const stair = new THREE.Mesh(geometry, stairMaterial);
+            stair.position.set(0, i * stairHeight, i * stairDepth);
+            stair.castShadow = true;
+            stair.receiveShadow = true;
+            scene.add(stair);
+            stairs.push(stair);
+        }
+
+        // Ball
+        const ballGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+        const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0.2 });
+        const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+        ball.position.set(0, stairCount * stairHeight + 0.5, (stairCount - 1) * stairDepth - 0.5);
+        ball.castShadow = true;
+        ball.receiveShadow = true;
+        scene.add(ball);
+
+        // Physics variables
+        let velocity = new THREE.Vector3(0, 0, -0.05); // Initial downward slope velocity
+        const gravity = new THREE.Vector3(0, -0.005, 0);
+        const bounceFactor = 0.7; // Energy loss on bounce
+        const friction = 0.98; // Slowdown due to friction
+
+        // Floor
+        const floorGeometry = new THREE.PlaneGeometry(10, 10);
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.15;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Apply gravity
+            velocity.add(gravity);
+
+            // Update ball position
+            ball.position.add(velocity);
+
+            // Collision detection with stairs
+            for (let stair of stairs) {
+                const stairBox = new THREE.Box3().setFromObject(stair);
+                const ballBox = new THREE.Box3().setFromObject(ball);
+
+                if (ballBox.intersectsBox(stairBox)) {
+                    // Ball hits stair surface (top)
+                    if (ball.position.y - 0.2 < stair.position.y + stairHeight / 2 &&
+                        velocity.y < 0) {
+                        ball.position.y = stair.position.y + stairHeight / 2 + 0.2;
+                        velocity.y = -velocity.y * bounceFactor; // Bounce
+                        velocity.x *= friction;
+                        velocity.z *= friction;
+                    }
+                }
+            }
+
+            // Collision with floor
+            if (ball.position.y - 0.2 < 0) {
+                ball.position.y = 0.2;
+                velocity.y = -velocity.y * bounceFactor;
+                velocity.x *= friction;
+                velocity.z *= friction;
+            }
+
+            // Keep ball within bounds
+            if (Math.abs(ball.position.x) > stairWidth / 2) {
+                ball.position.x = (stairWidth / 2) * Math.sign(ball.position.x);
+                velocity.x = -velocity.x * bounceFactor;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>
